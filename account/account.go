@@ -4,6 +4,7 @@ package account
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"fmt"
 	"github.com/0x10f/go-tron"
 	"github.com/0x10f/go-tron/address"
 	"github.com/btcsuite/btcd/btcec"
@@ -38,6 +39,10 @@ func NewLocalAccount() *LocalAccount {
 	acc.priv = privateKey
 
 	return acc
+}
+
+func (a *LocalAccount) PrivateKey() string {
+	return fmt.Sprintf("%x",a.priv.D.Bytes())
 }
 
 
