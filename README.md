@@ -45,5 +45,3 @@ func main() {
 	log.Printf("%#v\n", tx)
 }
 ```
-
-# go-tron
