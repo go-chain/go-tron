@@ -3,8 +3,10 @@ package account
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
 	"github.com/0x10f/go-tron"
 	"github.com/0x10f/go-tron/address"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -20,12 +22,22 @@ type LocalAccount struct {
 	priv *ecdsa.PrivateKey
 }
 
-func NewLocalAccount() LocalAccount {
+func NewLocalAccount() *LocalAccount {
 
-	
+	acc := new(LocalAccount)
 
+	privateKey, err := ecdsa.GenerateKey(btcec.S256(), rand.Reader)
 
-	return LocalAccount{}
+	if err != nil {
+		panic(err)
+	}
+
+	pub := ecdsa.PublicKey{Curve: btcec.S256(), X: privateKey.X, Y: privateKey.Y}
+
+	acc.addr = address.FromPublicKey(&pub)
+	acc.priv = privateKey
+
+	return acc
 }
 
 
