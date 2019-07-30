@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/0x10f/go-tron/account"
-	"github.com/0x10f/go-tron/client"
+	"github.com/go-chain/go-tron/account"
+	"github.com/go-chain/go-tron/client"
 	"log"
 )
 

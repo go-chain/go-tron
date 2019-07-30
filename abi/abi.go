@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/0x10f/go-tron/address"
+	"github.com/go-chain/go-tron/address"
 	"io/ioutil"
 	"math/big"
 	"reflect"

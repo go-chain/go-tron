@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
-	"github.com/0x10f/go-tron"
-	"github.com/0x10f/go-tron/address"
+	"github.com/go-chain/go-tron"
+	"github.com/go-chain/go-tron/address"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ethereum/go-ethereum/crypto"
 )
