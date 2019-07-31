@@ -437,6 +437,53 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (*Tr
 	return info, nil
 }
 
+func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInput) ([]string,error)  {
+	request := struct {
+		ContractAddress  string `json:"contract_address"`
+		FunctionSelector string `json:"function_selector"`
+		Parameter        string `json:"parameter"`
+		FeeLimit         uint64 `json:"fee_limit"`
+		CallValue        uint64 `json:"call_value"`
+		OwnerAddress     string `json:"owner_address"`
+	}{
+		ContractAddress:  input.Address.ToBase16(),
+		FunctionSelector: input.Function.Signature(),
+		Parameter:        hex.EncodeToString(input.Function.Encode(input.Arguments...)),
+		FeeLimit:         input.FeeLimit,
+		CallValue:        input.CallValue,
+		OwnerAddress:     acc.Address().ToBase16(),
+	}
+
+	var endpoint string
+	switch {
+	case input.Function.Immutable():
+		endpoint = "wallet/triggerconstantcontract"
+	default:
+		endpoint = "wallet/triggersmartcontract"
+	}
+
+	if !input.Function.Payable() {
+		if input.CallValue > 0 {
+			return nil, errors.New("client: cannot send tron to non-payable function")
+		}
+	}
+
+	response := struct {
+		Result      []string         `json:"constant_result"`
+		Transaction *tron.Transaction `json:"transaction"`
+	}{}
+	if err := c.post(endpoint, &request, &response); err != nil {
+		return nil, err
+	}
+
+	if len(response.Result) < 1 {
+		return nil,errors.New("response result length err")
+	}
+
+	return response.Result,nil
+
+}
+
 // BroadcastTransaction broadcasts a signed transaction to the network.
 func (c *Client) BroadcastTransaction(tx *tron.Transaction) error {
 	// TODO(271): Add in additional pieces for errors.
