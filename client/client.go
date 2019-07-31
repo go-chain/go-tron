@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-chain/go-tron"
 	"github.com/go-chain/go-tron/abi"
 	"github.com/go-chain/go-tron/account"
@@ -14,6 +13,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"fmt"
+
 )
 
 type Client struct {
@@ -177,7 +178,7 @@ type TransactionReceipt struct {
 }
 
 // Transfer transfers a balance of Tron from a source account to a destination address.
-func (c *Client) Transfer(src account.Account, dest address.Address,asset_name string, amount uint64) (*TransactionInfo, error) {
+func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (*TransactionInfo, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
@@ -408,6 +409,7 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (*Tr
 	if err := acc.Sign(&tx); err != nil {
 		return nil, err
 	}
+
 
 	if err := c.BroadcastTransaction(&tx); err != nil {
 		return nil, err
