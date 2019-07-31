@@ -204,6 +204,7 @@ func (c *Client) Transfer(src account.Account, dest address.Address,asset_name s
 	return c.await(tx.Id)
 }
 
+//TransferAsset trc10
 func (c *Client) TransferAsset(src account.Account, dest address.Address,assetName string, amount uint64)  (*TransactionInfo, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
@@ -217,7 +218,7 @@ func (c *Client) TransferAsset(src account.Account, dest address.Address,assetNa
 		Asset: assetName,
 	}
 	var tx tron.Transaction
-	if err := c.post("wallet/createtransaction", &request, &tx); err != nil {
+	if err := c.post("wallet/transferasset", &request, &tx); err != nil {
 		return nil, err
 	}
 
