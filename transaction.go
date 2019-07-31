@@ -18,6 +18,7 @@ type Transaction struct {
 	ContractAddress *json.RawMessage `json:"contract_address"`
 }
 
+
 func (tx *Transaction) Sign(key *ecdsa.PrivateKey) error {
 	if len(tx.Signatures) == 0 {
 		tx.Signatures = make([]string, 0, 1)

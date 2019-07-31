@@ -33,6 +33,7 @@ func New(host string) *Client {
 	}
 }
 
+
 // GetBlockByHeight returns the block at the specified height.
 func (c *Client) GetBlockByHeight(n uint64) (*tron.Block, error) {
 	var request = struct {
@@ -176,7 +177,7 @@ type TransactionReceipt struct {
 }
 
 // Transfer transfers a balance of Tron from a source account to a destination address.
-func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (*TransactionInfo, error) {
+func (c *Client) Transfer(src account.Account, dest address.Address,asset_name string, amount uint64) (*TransactionInfo, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
@@ -201,6 +202,35 @@ func (c *Client) Transfer(src account.Account, dest address.Address, amount uint
 	}
 
 	return c.await(tx.Id)
+}
+
+func (c *Client) TransferAsset(src account.Account, dest address.Address,assetName string, amount uint64)  (*TransactionInfo, error) {
+	var request = struct {
+		Owner  string `json:"owner_address"`
+		To     string `json:"to_address"`
+		Amount uint64 `json:"amount"`
+		Asset string `json:"asset_name"`
+	}{
+		Owner:  src.Address().ToBase16(),
+		To:     dest.ToBase16(),
+		Amount: amount,
+		Asset: assetName,
+	}
+	var tx tron.Transaction
+	if err := c.post("wallet/createtransaction", &request, &tx); err != nil {
+		return nil, err
+	}
+
+	if err := src.Sign(&tx); err != nil {
+		return nil, err
+	}
+
+	if err := c.BroadcastTransaction(&tx); err != nil {
+		return nil, err
+	}
+
+	return c.await(tx.Id)
+
 }
 
 // TransactionInfoById returns the information about a processed transaction. If the transaction
