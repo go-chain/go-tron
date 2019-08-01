@@ -30,7 +30,7 @@ type Client struct {
 func New(host string) *Client {
 	return &Client{
 		host:     host,
-		throttle: time.Second,
+		throttle: 3*time.Second,
 	}
 }
 
@@ -178,7 +178,7 @@ type TransactionReceipt struct {
 }
 
 // Transfer transfers a balance of Tron from a source account to a destination address.
-func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (*TransactionInfo, error) {
+func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (string, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
@@ -191,22 +191,24 @@ func (c *Client) Transfer(src account.Account, dest address.Address, amount uint
 
 	var tx tron.Transaction
 	if err := c.post("wallet/createtransaction", &request, &tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := src.Sign(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := c.BroadcastTransaction(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return c.await(tx.Id)
+	//return c.await(tx.Id)
+	return tx.Id,nil
+
 }
 
 //TransferAsset trc10
-func (c *Client) TransferAsset(src account.Account, dest address.Address,assetName string, amount uint64)  (*TransactionInfo, error) {
+func (c *Client) TransferAsset(src account.Account, dest address.Address,assetName string, amount uint64)  (string, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
@@ -220,18 +222,19 @@ func (c *Client) TransferAsset(src account.Account, dest address.Address,assetNa
 	}
 	var tx tron.Transaction
 	if err := c.post("wallet/transferasset", &request, &tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := src.Sign(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := c.BroadcastTransaction(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return c.await(tx.Id)
+	//return c.await(tx.Id)
+	return tx.Id,nil
 
 }
 
@@ -346,7 +349,7 @@ type CallContractInput struct {
 // the function will wait until the call has been completed. The returned ABI value is also unmarshaled
 // to CallContractInput.Result. Mutable functions will return transaction info if they are successfully
 // processed.
-func (c *Client) CallContract(acc account.Account, input CallContractInput) (*TransactionInfo, error) {
+func (c *Client) CallContract(acc account.Account, input CallContractInput) (string, error) {
 	request := struct {
 		ContractAddress  string `json:"contract_address"`
 		FunctionSelector string `json:"function_selector"`
@@ -373,7 +376,7 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (*Tr
 
 	if !input.Function.Payable() {
 		if input.CallValue > 0 {
-			return nil, errors.New("client: cannot send tron to non-payable function")
+			return "", errors.New("client: cannot send tron to non-payable function")
 		}
 	}
 
@@ -382,59 +385,61 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (*Tr
 		Transaction tron.Transaction `json:"transaction"`
 	}{}
 	if err := c.post(endpoint, &request, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	switch {
 	case input.Function.Immutable():
 		if len(response.Result) < 1 {
-			return nil, nil
+			return "", nil
 		}
 
 		bs, err := hex.DecodeString(response.Result[0])
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		if err := abi.Unmarshal(bs, input.Function, input.Result); err != nil {
-			return nil, err
+			return "", err
 		}
 
-		return nil, nil
+		return "", nil
 	default:
 	}
 
 	tx := response.Transaction
 
 	if err := acc.Sign(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 
 	if err := c.BroadcastTransaction(&tx); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	info, err := c.await(tx.Id)
-	if err != nil {
-		return nil, err
-	}
+	return tx.Id,nil
 
-	if len(info.ContractResult) < 1 {
-		return info, nil
-	}
-
-	// TODO(271): Probably can be simplified with above code as well.
-	bs, err := hex.DecodeString(info.ContractResult[0])
-	if err != nil {
-		return nil, err
-	}
-
-	if err := abi.Unmarshal(bs, input.Function, input.Result); err != nil {
-		return nil, err
-	}
-
-	return info, nil
+	//info, err := c.await(tx.Id)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//if len(info.ContractResult) < 1 {
+	//	return info, nil
+	//}
+	//
+	//// TODO(271): Probably can be simplified with above code as well.
+	//bs, err := hex.DecodeString(info.ContractResult[0])
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//if err := abi.Unmarshal(bs, input.Function, input.Result); err != nil {
+	//	return nil, err
+	//}
+	//
+	//return info, nil
 }
 
 func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInput) ([]string,error)  {
