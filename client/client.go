@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chain/go-tron"
 	"github.com/go-chain/go-tron/abi"
 	"github.com/go-chain/go-tron/account"
@@ -13,8 +14,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-	"fmt"
-
 )
 
 type Client struct {
@@ -30,10 +29,44 @@ type Client struct {
 func New(host string) *Client {
 	return &Client{
 		host:     host,
-		throttle: 3*time.Second,
+		throttle: 3 * time.Second,
 	}
 }
 
+type Getaccount struct {
+	Address             string `json:"address"`
+	Balance             int64  `json:"balance"`
+	AssetV2             []V2   `json:"assetV2"`
+	FreeAssetNetUsageV2 []V2   `json:"free_asset_net_usageV2"`
+}
+
+type V2 struct {
+	Key   string `json:"key"`
+	Value int64  `json:"value"`
+}
+
+//getaccount
+
+func (c *Client) GetAccount(addr string) (Getaccount, error) {
+
+	add, err := address.FromBase58(addr)
+	if err != nil {
+		return Getaccount{}, err
+	}
+
+	var request = struct {
+		Address string `json:"address"`
+	}{
+		Address: add.ToBase16(),
+	}
+
+	var acc Getaccount
+	if err := c.post("/wallet/getaccount", &request, &acc); err != nil {
+		return Getaccount{}, err
+	}
+	return acc, nil
+
+}
 
 // GetBlockByHeight returns the block at the specified height.
 func (c *Client) GetBlockByHeight(n uint64) (*tron.Block, error) {
@@ -178,7 +211,7 @@ type TransactionReceipt struct {
 }
 
 // Transfer transfers a balance of Tron from a source account to a destination address.
-func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (string, error) {
+func (c *Client) Transfer(src account.Account, dest address.Address, amount uint64) (tron.Transaction, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
@@ -191,50 +224,50 @@ func (c *Client) Transfer(src account.Account, dest address.Address, amount uint
 
 	var tx tron.Transaction
 	if err := c.post("wallet/createtransaction", &request, &tx); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
 	if err := src.Sign(&tx); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
-	if err := c.BroadcastTransaction(&tx); err != nil {
-		return "", err
-	}
+	//if err := c.BroadcastTransaction(&tx); err != nil {
+	//	return "", err
+	//}
 
 	//return c.await(tx.Id)
-	return tx.Id,nil
+	return tx, nil
 
 }
 
 //TransferAsset trc10
-func (c *Client) TransferAsset(src account.Account, dest address.Address,assetName string, amount uint64)  (string, error) {
+func (c *Client) TransferAsset(src account.Account, dest address.Address, assetName string, amount uint64) (tron.Transaction, error) {
 	var request = struct {
 		Owner  string `json:"owner_address"`
 		To     string `json:"to_address"`
 		Amount uint64 `json:"amount"`
-		Asset string `json:"asset_name"`
+		Asset  string `json:"asset_name"`
 	}{
 		Owner:  src.Address().ToBase16(),
 		To:     dest.ToBase16(),
 		Amount: amount,
-		Asset: assetName,
+		Asset:  assetName,
 	}
 	var tx tron.Transaction
 	if err := c.post("wallet/transferasset", &request, &tx); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
 	if err := src.Sign(&tx); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
-	if err := c.BroadcastTransaction(&tx); err != nil {
-		return "", err
-	}
+	//if err := c.BroadcastTransaction(&tx); err != nil {
+	//	return "", err
+	//}
 
 	//return c.await(tx.Id)
-	return tx.Id,nil
+	return tx, nil
 
 }
 
@@ -349,7 +382,7 @@ type CallContractInput struct {
 // the function will wait until the call has been completed. The returned ABI value is also unmarshaled
 // to CallContractInput.Result. Mutable functions will return transaction info if they are successfully
 // processed.
-func (c *Client) CallContract(acc account.Account, input CallContractInput) (string, error) {
+func (c *Client) CallContract(acc account.Account, input CallContractInput) (tron.Transaction, error) {
 	request := struct {
 		ContractAddress  string `json:"contract_address"`
 		FunctionSelector string `json:"function_selector"`
@@ -376,7 +409,7 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (str
 
 	if !input.Function.Payable() {
 		if input.CallValue > 0 {
-			return "", errors.New("client: cannot send tron to non-payable function")
+			return tron.Transaction{}, errors.New("client: cannot send tron to non-payable function")
 		}
 	}
 
@@ -385,40 +418,39 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (str
 		Transaction tron.Transaction `json:"transaction"`
 	}{}
 	if err := c.post(endpoint, &request, &response); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
 	switch {
 	case input.Function.Immutable():
 		if len(response.Result) < 1 {
-			return "", nil
+			return tron.Transaction{}, nil
 		}
 
 		bs, err := hex.DecodeString(response.Result[0])
 		if err != nil {
-			return "", err
+			return tron.Transaction{}, err
 		}
 
 		if err := abi.Unmarshal(bs, input.Function, input.Result); err != nil {
-			return "", err
+			return tron.Transaction{}, err
 		}
 
-		return "", nil
+		return tron.Transaction{}, nil
 	default:
 	}
 
 	tx := response.Transaction
 
 	if err := acc.Sign(&tx); err != nil {
-		return "", err
+		return tron.Transaction{}, err
 	}
 
+	//if err := c.BroadcastTransaction(&tx); err != nil {
+	//	return "", err
+	//}
 
-	if err := c.BroadcastTransaction(&tx); err != nil {
-		return "", err
-	}
-
-	return tx.Id,nil
+	return tx, nil
 
 	//info, err := c.await(tx.Id)
 	//if err != nil {
@@ -442,7 +474,7 @@ func (c *Client) CallContract(acc account.Account, input CallContractInput) (str
 	//return info, nil
 }
 
-func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInput) ([]string,error)  {
+func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInput) ([]string, error) {
 	request := struct {
 		ContractAddress  string `json:"contract_address"`
 		FunctionSelector string `json:"function_selector"`
@@ -456,7 +488,7 @@ func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInp
 		Parameter:        hex.EncodeToString(input.Function.Encode(input.Arguments...)),
 		FeeLimit:         input.FeeLimit,
 		CallValue:        input.CallValue,
-		OwnerAddress:     acc.Address().ToBase16(),
+		OwnerAddress:     input.Address.ToBase16(),
 	}
 
 	var endpoint string
@@ -474,7 +506,7 @@ func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInp
 	}
 
 	response := struct {
-		Result      []string         `json:"constant_result"`
+		Result      []string          `json:"constant_result"`
 		Transaction *tron.Transaction `json:"transaction"`
 	}{}
 	if err := c.post(endpoint, &request, &response); err != nil {
@@ -482,10 +514,10 @@ func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInp
 	}
 
 	if len(response.Result) < 1 {
-		return nil,errors.New("response result length err")
+		return nil, errors.New("response result length err")
 	}
 
-	return response.Result,nil
+	return response.Result, nil
 
 }
 
