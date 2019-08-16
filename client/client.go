@@ -82,7 +82,7 @@ func (c *Client) GetBlockByHeight(n uint64) (*tron.Block, error) {
 	}
 
 	if block.Id == "" {
-		return nil, nil
+		return nil, fmt.Errorf("block num: %d not exist",n)
 	}
 
 	return &block, nil
