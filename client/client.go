@@ -288,7 +288,7 @@ func (c *Client) TransactionInfoById(id string) (*TransactionInfo, error) {
 
 	// Transactions that exist will always have an identifier returned.
 	if info.Id == "" {
-		return nil, nil
+		return nil, errors.New("tx id is null,Unconfirmed transaction")
 	}
 
 	return &info, nil
