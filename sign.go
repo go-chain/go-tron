@@ -2,6 +2,7 @@ package tron
 
 import (
 	"crypto/ecdsa"
+
 	"github.com/go-chain/go-tron/address"
 )
 
