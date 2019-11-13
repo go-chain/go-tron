@@ -491,6 +491,8 @@ func (c *Client) TriggerSmartContract(acc account.Account, input CallContractInp
 		OwnerAddress:     input.Address.ToBase16(),
 	}
 
+	reqb, _ := json.Marshal(request)
+	fmt.Println(string(reqb))
 	var endpoint string
 	switch {
 	case input.Function.Immutable():
