@@ -547,6 +547,7 @@ func (c *Client) post(endpoint string, request interface{}, response interface{}
 		return err
 	}
 
+	fmt.Println("c.getFullNodeURL(endpoint): ",c.getFullNodeURL(endpoint))
 	req, err := http.NewRequest("POST", c.getFullNodeURL(endpoint), bytes.NewReader(bs))
 	if err != nil {
 		return err
